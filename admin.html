@@ -53,7 +53,6 @@
 </head>
 <body class="min-h-screen text-charcoal">
 
-  <!-- ── NAV ─────────────────────────────────────────── -->
   <nav class="sticky top-0 z-30 border-b border-mist bg-cream/90 backdrop-blur">
     <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -73,7 +72,6 @@
 
   <main class="max-w-5xl mx-auto px-4 py-10 space-y-10">
 
-    <!-- ── FORMULARIO ──────────────────────────────────── -->
     <section class="bg-white border border-mist rounded-sm p-6 md:p-8">
 
       <div class="flex items-center justify-between mb-6">
@@ -86,16 +84,13 @@
 
       <form id="adminForm" novalidate class="space-y-5">
 
-        <!-- ID (oculto, autogenerado) -->
         <input type="hidden" id="field_id" />
 
-        <!-- Nombre -->
         <div>
           <label for="field_nombre" class="field-label">Nombre <span class="text-bark">*</span></label>
           <input id="field_nombre" type="text" class="field-input" placeholder="Ej: Remera lino crudo" required />
         </div>
 
-        <!-- Precio + ID visible de referencia -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label for="field_precio" class="field-label">Precio <span class="text-bark">*</span></label>
@@ -117,26 +112,23 @@
           </div>
         </div>
 
-        <!-- Descripción -->
         <div>
           <label for="field_descripcion" class="field-label">Descripción</label>
           <textarea id="field_descripcion" rows="3" class="field-input resize-none"
             placeholder="Ej: Prenda de algodón 100%, talle único, colores disponibles: blanco y negro."></textarea>
         </div>
 
-        <!-- Imágenes -->
         <div>
           <label for="field_imagenes" class="field-label">Imágenes</label>
           <input id="field_imagenes" type="text" class="field-input"
             placeholder="Ej: remera1.jpg, remera2.jpg  o  VELA1\foto.jpg, VELA1\foto2.jpg" />
           <p class="font-body text-[11px] text-charcoal/30 mt-1.5 leading-relaxed">
-            Separadas por coma. Las contrabarras <code class="bg-mist px-1 rounded text-[11px]">\</code>
+            Separadas por barra vertical <code class="bg-mist px-1 rounded text-[11px]">|</code>. Las contrabarras <code class="bg-mist px-1 rounded text-[11px]">\</code>
             se convierten a <code class="bg-mist px-1 rounded text-[11px]">/</code> automáticamente.
             La ruta <code class="bg-mist px-1 rounded text-[11px]">img/</code> se antepone sola.
           </p>
         </div>
 
-        <!-- Feedback + submit -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
           <button id="submitBtn" type="submit"
             class="bg-charcoal text-cream font-body text-xs tracking-widest uppercase px-6 py-3
@@ -149,7 +141,6 @@
       </form>
     </section>
 
-    <!-- ── TABLA DE PRODUCTOS ──────────────────────────── -->
     <section class="bg-white border border-mist rounded-sm">
 
       <div class="flex items-center justify-between px-6 py-4 border-b border-mist">
@@ -173,7 +164,7 @@
               <th class="px-4 py-3 border-b border-mist">Precio</th>
               <th class="px-4 py-3 border-b border-mist">Descripción</th>
               <th class="px-4 py-3 border-b border-mist">Imágenes</th>
-              <th class="px-4 py-3 border-b border-mist"></th>
+              <th class="px-4 py-3 border-b border-mist">Acciones</th>
             </tr>
           </thead>
           <tbody id="adminTableBody">
@@ -191,7 +182,6 @@
 
     </section>
 
-    <!-- ── INSTRUCCIONES GOOGLE SCRIPT ────────────────── -->
     <section class="border border-mist rounded-sm p-6 space-y-3">
       <h3 class="font-display text-lg font-light tracking-wide text-charcoal/60">Configuración pendiente</h3>
       <p class="font-body text-sm text-charcoal/50 leading-relaxed">
@@ -235,17 +225,29 @@
     // Cuando fillAdminForm() carga datos, refleja el ID hidden en el visible
     const _origFillAdminForm = window.fillAdminForm;
     window.fillAdminForm = function(p) {
-      _origFillAdminForm(p);
+      if (typeof _origFillAdminForm === 'function') _origFillAdminForm(p);
       fieldIdVisible.value = fieldIdHidden.value;
     };
 
     // Cuando clearAdminForm() limpia, también limpia el visible y regenera ID
     const _origClear = window.clearAdminForm;
     window.clearAdminForm = function() {
-      _origClear();
+      if (typeof _origClear === 'function') _origClear();
       const newId = 'p' + Date.now();
       fieldIdHidden.value  = newId;
       fieldIdVisible.value = newId;
+    };
+
+    // Intercepta la función deleteProduct global para forzar recarga total de la UI tras limpiar en Google
+    const _origDeleteProduct = window.deleteProduct;
+    window.deleteProduct = async function(id) {
+      if (typeof _origDeleteProduct === 'function') {
+        await _origDeleteProduct(id);
+        // Fuerza el refresco completo de la UI para borrar el residuo visual del producto eliminado
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
+      }
     };
 
     // Auto-genera ID al cargar la página
