@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUMA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:   '#F7F3EE',
+            bark:    '#C8A882',
+            charcoal:'#2A2A2A',
+            mist:    '#E8E2D9',
+            ink:     '#1A1A1A',
+          },
+          fontFamily: {
+            display: ['Cormorant Garamond', 'Georgia', 'serif'],
+            body:    ['DM Sans', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { background-color: #F7F3EE; font-family: 'DM Sans', system-ui, sans-serif; }
+
+    /* ── Loader ── */
+    #loader { transition: opacity .4s ease; }
+
+    /* ── Nav ── */
+    #mainNav {
+      backdrop-filter: blur(10px);
+      background: rgba(247,243,238,.88);
+    }
+
+    /* ── Hero ── */
+    #hero { background: linear-gradient(160deg, #2A2A2A 0%, #3d3228 100%); }
+
+    /* ── Cards ── */
+    .product-card { transition: transform .25s ease, box-shadow .25s ease; }
+    .product-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(42,42,42,.12); }
+
+    /* ── Card image wrapper ── */
+    .card-img-wrap {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: #E8E2D9;
+    }
+    .card-img-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform .4s ease;
+      cursor: zoom-in;
+    }
+    .product-card:hover .card-img-wrap img { transform: scale(1.04); }
+
+    /* nav arrows on card */
+    .card-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(247,243,238,.82);
+      border: none; border-radius: 50%;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 15px; color: #2A2A2A;
+      transition: background .2s, opacity .2s;
+      z-index: 5; user-select: none;
+    }
+    .card-arrow:hover { background: rgba(247,243,238,1); }
+    .card-arrow.left  { left: 8px; }
+    .card-arrow.right { right: 8px; }
+
+    /* photo counter */
+    .card-counter {
+      position: absolute; bottom: 8px; right: 8px;
+      background: rgba(26,26,26,.52);
+      color: #F7F3EE; font-size: 11px; font-family: 'DM Sans', sans-serif;
+      padding: 2px 8px; border-radius: 20px;
+      pointer-events: none; z-index: 5;
+    }
+
+    /* thumbnails strip */
+    .thumb-strip { display: flex; gap: 4px; padding: 6px 0 0; overflow-x: auto; }
+    .thumb-strip::-webkit-scrollbar { display: none; }
+    .thumb-strip img {
+      width: 40px; height: 40px;
+      object-fit: cover; border-radius: 4px;
+      cursor: pointer; opacity: .65;
+      border: 1.5px solid transparent;
+      transition: opacity .2s, border-color .2s;
+      flex-shrink: 0;
+    }
+    .thumb-strip img.active, .thumb-strip img:hover { opacity: 1; border-color: #C8A882; }
+
+    /* ── Cart Drawer ── */
+    #cartDrawer {
+      transition: transform .35s cubic-bezier(.4,0,.2,1);
+      transform: translateX(100%);
+    }
+    #cartDrawer.open { transform: translateX(0); }
+    #cartOverlay { transition: opacity .3s ease; }
+
+    /* ── Floating cart button (mobile) ── */
+    #floatingCart {
+      box-shadow: 0 4px 20px rgba(42,42,42,.22);
+      transition: transform .2s ease;
+    }
+    #floatingCart:active { transform: scale(.94); }
+
+    /* ── Modal ── */
+    #imageModal {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(26,26,26,.92);
+      align-items: center; justify-content: center;
+    }
+    #imageModal.open { display: flex; }
+    #imageModal .modal-img {
+      max-width: 90vw; max-height: 82vh;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+    .modal-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(247,243,238,.15);
+      border: none; border-radius: 50%;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 20px; color: #F7F3EE;
+      transition: background .2s; z-index: 5;
+    }
+    .modal-arrow:hover { background: rgba(247,243,238,.28); }
+    .modal-arrow.left  { left: 12px; }
+    .modal-arrow.right { right: 12px; }
+    .modal-counter {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      color: rgba(247,243,238,.7); font-size: 13px; font-family: 'DM Sans', sans-serif;
+      letter-spacing: .06em;
+    }
+    #modalClose {
+      position: absolute; top: 14px; right: 16px;
+      background: none; border: none;
+      color: #F7F3EE; font-size: 26px; cursor: pointer;
+      line-height: 1; padding: 4px; z-index: 10;
+    }
+  </style>
+</head>
+<body class="text-charcoal">
+
+  <!-- ══════════════ NAV ══════════════ -->
+  <nav id="mainNav" class="fixed top-0 left-0 right-0 z-50 border-b border-mist">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <!-- Logo -->
+      <a href="#" class="font-display text-2xl font-light tracking-[.18em] text-charcoal select-none">HUMA</a>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-3">
+        <button id="navCartBtn"
+          class="relative flex items-center gap-1.5 text-sm font-body font-medium text-charcoal hover:text-bark transition-colors"
+          aria-label="Abrir carrito">
+          <!-- bag icon -->
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6" stroke-linecap="round"/>
+            <path stroke-linecap="round" d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <span id="navCartCount"
+            class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-bark text-cream text-[11px] font-medium leading-[18px] text-center">
+            0
+          </span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <section id="hero" class="pt-14">
+    <div class="max-w-5xl mx-auto px-4 py-20 md:py-32 flex flex-col items-center text-center">
+      <p class="font-body text-bark text-xs tracking-[.3em] uppercase mb-3">Nueva colección</p>
+      <h1 class="font-display text-5xl md:text-7xl font-light text-cream leading-none tracking-wide mb-4">
+        Vestite<br /><em class="italic">diferente.</em>
+      </h1>
+      <p class="font-body text-mist/70 text-sm max-w-xs mt-2">
+        Prendas con identidad. Selección curada, envíos a todo el país.
+      </p>
+      <a href="#catalogo"
+        class="mt-10 inline-block border border-bark text-bark font-body text-xs tracking-[.2em] uppercase px-7 py-3
+               hover:bg-bark hover:text-cream transition-colors duration-300">
+        Ver colección
+      </a>
+    </div>
+  </section>
+
+  <!-- ══════════════ CATÁLOGO ══════════════ -->
+  <section id="catalogo" class="max-w-5xl mx-auto px-4 py-16">
+    <!-- heading -->
+    <div class="flex items-baseline justify-between mb-8">
+      <h2 class="font-display text-3xl md:text-4xl font-light tracking-wide">Catálogo</h2>
+      <span id="productCount" class="font-body text-xs text-charcoal/40 tracking-widest uppercase"></span>
+    </div>
+
+    <!-- loader -->
+    <div id="loader" class="flex flex-col items-center py-24 gap-3">
+      <div class="w-6 h-6 border-2 border-bark/30 border-t-bark rounded-full animate-spin"></div>
+      <p class="font-body text-xs text-charcoal/40 tracking-widest uppercase">Cargando</p>
+    </div>
+
+    <!-- error -->
+    <div id="catalogError" class="hidden py-16 text-center">
+      <p class="font-body text-sm text-charcoal/50">No se pudo cargar el catálogo. Intentá de nuevo más tarde.</p>
+    </div>
+
+    <!-- grid -->
+    <div id="productGrid" class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"></div>
+  </section>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="border-t border-mist py-10 mt-8">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col items-center gap-2 text-center">
+      <span class="font-display text-xl font-light tracking-[.2em] text-charcoal">HUMA</span>
+      <p class="font-body text-xs text-charcoal/40">© 2025 · Todos los derechos reservados</p>
+    </div>
+  </footer>
+
+  <!-- ══════════════ FLOATING CART (mobile) ══════════════ -->
+  <button id="floatingCart"
+    class="fixed bottom-6 right-5 z-40 flex items-center gap-2 bg-charcoal text-cream
+           font-body text-xs font-medium tracking-wide uppercase px-4 py-3 rounded-full
+           md:hidden"
+    aria-label="Ver carrito">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6" stroke-linecap="round"/>
+      <path stroke-linecap="round" d="M16 10a4 4 0 01-8 0"/>
+    </svg>
+    Carrito
+    <span id="floatingCartCount"
+      class="hidden min-w-[18px] h-[18px] px-1 rounded-full bg-bark text-cream text-[11px] font-medium leading-[18px] text-center">
+      0
+    </span>
+  </button>
+
+  <!-- ══════════════ CART OVERLAY ══════════════ -->
+  <div id="cartOverlay"
+    class="fixed inset-0 z-50 bg-ink/40 hidden opacity-0"
+    aria-hidden="true"></div>
+
+  <!-- ══════════════ CART DRAWER ══════════════ -->
+  <aside id="cartDrawer"
+    class="fixed top-0 right-0 bottom-0 z-50 w-full max-w-sm bg-cream shadow-2xl flex flex-col"
+    aria-label="Carrito de compras">
+
+    <!-- header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-mist">
+      <h2 class="font-display text-2xl font-light tracking-wide">Tu bolsa</h2>
+      <button id="closeCartBtn" class="text-charcoal/50 hover:text-charcoal transition-colors" aria-label="Cerrar">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- items -->
+    <div id="cartItems" class="flex-1 overflow-y-auto px-5 py-4 space-y-4"></div>
+
+    <!-- footer -->
+    <div id="cartFooter" class="hidden border-t border-mist px-5 py-5 space-y-4">
+      <div class="flex items-baseline justify-between">
+        <span class="font-body text-sm text-charcoal/60">Total</span>
+        <span id="cartTotal" class="font-display text-2xl font-light">$0</span>
+      </div>
+      <button id="whatsappBtn"
+        class="w-full bg-charcoal text-cream font-body text-sm tracking-widest uppercase py-4
+               hover:bg-bark transition-colors duration-300 flex items-center justify-center gap-2">
+        <!-- whatsapp icon -->
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15
+                   -.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075
+                   -.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059
+                   -.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52
+                   .149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52
+                   -.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51
+                   -.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372
+                   -.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074
+                   .149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625
+                   .712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413
+                   .248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.526 5.845L.057 23.97l6.255-1.443A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.893a9.874 9.874 0 01-5.032-1.375l-.36-.214-3.733.861.882-3.63-.235-.374A9.862 9.862 0 012.107 12C2.107 6.533 6.533 2.107 12 2.107S21.893 6.533 21.893 12 17.467 21.893 12 21.893z"/>
+        </svg>
+        Pedir por WhatsApp
+      </button>
+    </div>
+
+    <!-- empty state -->
+    <div id="cartEmpty" class="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
+      <svg class="w-10 h-10 text-charcoal/20" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+        <line x1="3" y1="6" x2="21" y2="6" stroke-linecap="round"/>
+        <path stroke-linecap="round" d="M16 10a4 4 0 01-8 0"/>
+      </svg>
+      <p class="font-display text-xl font-light text-charcoal/40 italic">Tu bolsa está vacía</p>
+      <p class="font-body text-xs text-charcoal/30">Agregá productos para continuar</p>
+    </div>
+  </aside>
+
+  <!-- ══════════════ IMAGE MODAL ══════════════ -->
+  <div id="imageModal" role="dialog" aria-modal="true" aria-label="Vista ampliada">
+    <!-- click outside closes -->
+    <div id="modalBackdrop" class="absolute inset-0 z-0"></div>
+
+    <!-- close btn -->
+    <button id="modalClose" aria-label="Cerrar">&#10005;</button>
+
+    <!-- content -->
+    <div class="relative z-10 flex flex-col items-center gap-3">
+      <img id="modalImg" class="modal-img" src="" alt="" />
+    </div>
+
+    <!-- arrows (hidden when single image) -->
+    <button id="modalPrev" class="modal-arrow left" aria-label="Anterior">&#8249;</button>
+    <button id="modalNext" class="modal-arrow right" aria-label="Siguiente">&#8250;</button>
+
+    <!-- counter -->
+    <div id="modalCounter" class="modal-counter"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
