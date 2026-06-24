@@ -40,9 +40,6 @@
       background: rgba(247,243,238,.88);
     }
 
-    /* ── Hero ── */
-    #hero { background: linear-gradient(160deg, #2A2A2A 0%, #3d3228 100%); }
-
     /* ── Cards ── */
     .product-card { transition: transform .25s ease, box-shadow .25s ease; }
     .product-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(42,42,42,.12); }
@@ -154,18 +151,14 @@
 </head>
 <body class="text-charcoal">
 
-  <!-- ══════════════ NAV ══════════════ -->
   <nav id="mainNav" class="fixed top-0 left-0 right-0 z-50 border-b border-mist">
     <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-      <!-- Logo -->
       <a href="#" class="font-display text-2xl font-light tracking-[.18em] text-charcoal select-none">HUMA</a>
 
-      <!-- Right actions -->
       <div class="flex items-center gap-3">
         <button id="navCartBtn"
           class="relative flex items-center gap-1.5 text-sm font-body font-medium text-charcoal hover:text-bark transition-colors"
           aria-label="Abrir carrito">
-          <!-- bag icon -->
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round"
               d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
@@ -181,48 +174,62 @@
     </div>
   </nav>
 
-  <!-- ══════════════ HERO ══════════════ -->
-  <section id="hero" class="pt-14">
-    <div class="max-w-5xl mx-auto px-4 py-20 md:py-32 flex flex-col items-center text-center">
-      <p class="font-body text-bark text-xs tracking-[.3em] uppercase mb-3">Nueva colección</p>
-      <h1 class="font-display text-5xl md:text-7xl font-light text-cream leading-none tracking-wide mb-4">
-        Vestite<br /><em class="italic">diferente.</em>
-      </h1>
-      <p class="font-body text-mist/70 text-sm max-w-xs mt-2">
-        Prendas con identidad. Selección curada, envíos a todo el país.
-      </p>
-      <a href="#catalogo"
-        class="mt-10 inline-block border border-bark text-bark font-body text-xs tracking-[.2em] uppercase px-7 py-3
-               hover:bg-bark hover:text-cream transition-colors duration-300">
-        Ver colección
-      </a>
+  <section id="hero" class="pt-14 min-h-[85vh] flex flex-col items-center justify-center bg-cream px-6 py-12 text-center select-none">
+    
+    <div class="w-28 h-28 mb-6 text-bark flex items-center justify-center">
+      <svg viewBox="0 0 100 100" class="w-full h-full" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 48,15 A 35,35 0 1,0 82,55" />
+        <path d="M 46,68 C 40,65 38,55 44,45 C 48,39 50,32 48,25 C 56,35 60,48 54,58 C 50,65 50,68 46,68 Z" fill="#C8A882" fill-opacity="0.1"/>
+        <path d="M 46,68 C 40,65 38,55 44,45 C 48,39 50,32 48,25 C 56,35 60,48 54,58 C 50,65 50,68 46,68 Z" />
+        <path d="M 72,32 C 78,38 82,46 80,55" />
+        <path d="M 73,34 C 71,31 73,28 76,29 C 78,31 76,34 73,34 Z" fill="currentColor"/>
+        <path d="M 79,39 C 78,36 81,34 83,36 C 84,39 81,41 79,39 Z" fill="currentColor"/>
+        <path d="M 81,47 C 79,45 83,42 85,44 C 85,47 82,49 81,47 Z" fill="currentColor"/>
+        <path d="M 80,55 C 78,53 81,50 83,51 C 83,54 80,56 80,55 Z" fill="currentColor"/>
+      </svg>
     </div>
+
+    <h1 class="font-display text-5xl md:text-6xl font-light tracking-[0.2em] text-charcoal uppercase mb-1">
+      HUMA
+    </h1>
+    
+    <p class="font-display text-lg md:text-xl tracking-[0.3em] text-charcoal/80 uppercase font-medium mb-4">
+      Hogar Ámbar
+    </p>
+
+    <div class="w-48 h-[1px] bg-bark/40 relative flex items-center justify-center mb-5">
+      <div class="absolute bg-cream px-2 text-xs text-bark font-light">✕</div>
+    </div>
+
+    <p class="font-body text-xs md:text-sm tracking-[0.25em] text-charcoal/60 uppercase mb-10">
+      Fragancias <span class="text-bark">·</span> Home <span class="text-bark">·</span> Deco
+    </p>
+
+    <a href="#catalogo"
+      class="font-body text-xs tracking-widest uppercase border border-charcoal text-charcoal bg-transparent px-8 py-3.5 
+             hover:bg-charcoal hover:text-cream transition-all duration-300 ease-in-out rounded-sm">
+      Ver colección
+    </a>
   </section>
 
-  <!-- ══════════════ CATÁLOGO ══════════════ -->
   <section id="catalogo" class="max-w-5xl mx-auto px-4 py-16">
-    <!-- heading -->
     <div class="flex items-baseline justify-between mb-8">
       <h2 class="font-display text-3xl md:text-4xl font-light tracking-wide">Catálogo</h2>
       <span id="productCount" class="font-body text-xs text-charcoal/40 tracking-widest uppercase"></span>
     </div>
 
-    <!-- loader -->
     <div id="loader" class="flex flex-col items-center py-24 gap-3">
       <div class="w-6 h-6 border-2 border-bark/30 border-t-bark rounded-full animate-spin"></div>
       <p class="font-body text-xs text-charcoal/40 tracking-widest uppercase">Cargando</p>
     </div>
 
-    <!-- error -->
     <div id="catalogError" class="hidden py-16 text-center">
       <p class="font-body text-sm text-charcoal/50">No se pudo cargar el catálogo. Intentá de nuevo más tarde.</p>
     </div>
 
-    <!-- grid -->
     <div id="productGrid" class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"></div>
   </section>
 
-  <!-- ══════════════ FOOTER ══════════════ -->
   <footer class="border-t border-mist py-10 mt-8">
     <div class="max-w-5xl mx-auto px-4 flex flex-col items-center gap-2 text-center">
       <span class="font-display text-xl font-light tracking-[.2em] text-charcoal">HUMA</span>
@@ -230,7 +237,6 @@
     </div>
   </footer>
 
-  <!-- ══════════════ FLOATING CART (mobile) ══════════════ -->
   <button id="floatingCart"
     class="fixed bottom-6 right-5 z-40 flex items-center gap-2 bg-charcoal text-cream
            font-body text-xs font-medium tracking-wide uppercase px-4 py-3 rounded-full
@@ -249,17 +255,14 @@
     </span>
   </button>
 
-  <!-- ══════════════ CART OVERLAY ══════════════ -->
   <div id="cartOverlay"
     class="fixed inset-0 z-50 bg-ink/40 hidden opacity-0"
     aria-hidden="true"></div>
 
-  <!-- ══════════════ CART DRAWER ══════════════ -->
   <aside id="cartDrawer"
     class="fixed top-0 right-0 bottom-0 z-50 w-full max-w-sm bg-cream shadow-2xl flex flex-col"
     aria-label="Carrito de compras">
 
-    <!-- header -->
     <div class="flex items-center justify-between px-5 py-4 border-b border-mist">
       <h2 class="font-display text-2xl font-light tracking-wide">Tu bolsa</h2>
       <button id="closeCartBtn" class="text-charcoal/50 hover:text-charcoal transition-colors" aria-label="Cerrar">
@@ -269,10 +272,8 @@
       </button>
     </div>
 
-    <!-- items -->
     <div id="cartItems" class="flex-1 overflow-y-auto px-5 py-4 space-y-4"></div>
 
-    <!-- footer -->
     <div id="cartFooter" class="hidden border-t border-mist px-5 py-5 space-y-4">
       <div class="flex items-baseline justify-between">
         <span class="font-body text-sm text-charcoal/60">Total</span>
@@ -281,7 +282,6 @@
       <button id="whatsappBtn"
         class="w-full bg-charcoal text-cream font-body text-sm tracking-widest uppercase py-4
                hover:bg-bark transition-colors duration-300 flex items-center justify-center gap-2">
-        <!-- whatsapp icon -->
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15
                    -.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075
@@ -300,7 +300,6 @@
       </button>
     </div>
 
-    <!-- empty state -->
     <div id="cartEmpty" class="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
       <svg class="w-10 h-10 text-charcoal/20" fill="none" stroke="currentColor" stroke-width="1.4" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round"
@@ -313,24 +312,18 @@
     </div>
   </aside>
 
-  <!-- ══════════════ IMAGE MODAL ══════════════ -->
   <div id="imageModal" role="dialog" aria-modal="true" aria-label="Vista ampliada">
-    <!-- click outside closes -->
     <div id="modalBackdrop" class="absolute inset-0 z-0"></div>
 
-    <!-- close btn -->
     <button id="modalClose" aria-label="Cerrar">&#10005;</button>
 
-    <!-- content -->
     <div class="relative z-10 flex flex-col items-center gap-3">
       <img id="modalImg" class="modal-img" src="" alt="" />
     </div>
 
-    <!-- arrows (hidden when single image) -->
     <button id="modalPrev" class="modal-arrow left" aria-label="Anterior">&#8249;</button>
     <button id="modalNext" class="modal-arrow right" aria-label="Siguiente">&#8250;</button>
 
-    <!-- counter -->
     <div id="modalCounter" class="modal-counter"></div>
   </div>
 
