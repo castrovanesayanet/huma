@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HUMA · Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:    '#F7F3EE',
+            bark:     '#C8A882',
+            charcoal: '#2A2A2A',
+            mist:     '#E8E2D9',
+            ink:      '#1A1A1A',
+          },
+          fontFamily: {
+            display: ['Cormorant Garamond', 'Georgia', 'serif'],
+            body:    ['DM Sans', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #F7F3EE; font-family: 'DM Sans', system-ui, sans-serif; }
+    input, textarea { outline: none; }
+    input:focus, textarea:focus { box-shadow: 0 0 0 2px #C8A882; }
+    .field-label { @apply block text-xs font-medium tracking-widest uppercase text-charcoal/50 mb-1; }
+    .field-input {
+      width: 100%;
+      border: 1px solid #E8E2D9;
+      background: #fff;
+      border-radius: 2px;
+      padding: 0.55rem 0.75rem;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 0.875rem;
+      color: #2A2A2A;
+      transition: border-color .15s;
+    }
+    .field-input:focus { border-color: #C8A882; }
+    /* table scroll */
+    #tableWrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 680px; }
+    th { background: #F7F3EE; }
+    tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body class="min-h-screen text-charcoal">
+
+  <!-- ── NAV ─────────────────────────────────────────── -->
+  <nav class="sticky top-0 z-30 border-b border-mist bg-cream/90 backdrop-blur">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="font-display text-2xl font-light tracking-[.18em]">HUMA</span>
+        <span class="hidden sm:inline text-charcoal/30 text-sm">·</span>
+        <span class="hidden sm:inline font-body text-xs tracking-widest uppercase text-charcoal/40">Panel de administración</span>
+      </div>
+      <a href="index.html"
+        class="font-body text-xs tracking-widest uppercase text-charcoal/50 hover:text-bark transition-colors flex items-center gap-1.5">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Ver tienda
+      </a>
+    </div>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-4 py-10 space-y-10">
+
+    <!-- ── FORMULARIO ──────────────────────────────────── -->
+    <section class="bg-white border border-mist rounded-sm p-6 md:p-8">
+
+      <div class="flex items-center justify-between mb-6">
+        <h1 id="formTitle" class="font-display text-2xl font-light tracking-wide">Nuevo producto</h1>
+        <button id="clearFormBtn"
+          class="font-body text-xs tracking-widest uppercase text-charcoal/40 hover:text-bark transition-colors">
+          Limpiar
+        </button>
+      </div>
+
+      <form id="adminForm" novalidate class="space-y-5">
+
+        <!-- ID (oculto, autogenerado) -->
+        <input type="hidden" id="field_id" />
+
+        <!-- Nombre -->
+        <div>
+          <label for="field_nombre" class="field-label">Nombre <span class="text-bark">*</span></label>
+          <input id="field_nombre" type="text" class="field-input" placeholder="Ej: Remera lino crudo" required />
+        </div>
+
+        <!-- Precio + ID visible de referencia -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label for="field_precio" class="field-label">Precio <span class="text-bark">*</span></label>
+            <input id="field_precio" type="number" min="0" step="0.01" class="field-input" placeholder="Ej: 18500" required />
+          </div>
+          <div>
+            <label class="field-label">ID del producto</label>
+            <div class="flex gap-2">
+              <input id="field_id_visible" type="text" class="field-input flex-1"
+                placeholder="Se genera automáticamente"
+                oninput="document.getElementById('field_id').value = this.value.trim()" />
+              <button type="button" id="generateIdBtn"
+                title="Generar ID automático"
+                class="shrink-0 border border-mist px-3 rounded-sm text-charcoal/40 hover:border-bark hover:text-bark transition-colors text-lg leading-none">
+                ↻
+              </button>
+            </div>
+            <p class="font-body text-[11px] text-charcoal/30 mt-1">Editable. Se usa para identificar el producto en la planilla.</p>
+          </div>
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label for="field_descripcion" class="field-label">Descripción</label>
+          <textarea id="field_descripcion" rows="3" class="field-input resize-none"
+            placeholder="Ej: Prenda de algodón 100%, talle único, colores disponibles: blanco y negro."></textarea>
+        </div>
+
+        <!-- Imágenes -->
+        <div>
+          <label for="field_imagenes" class="field-label">Imágenes</label>
+          <input id="field_imagenes" type="text" class="field-input"
+            placeholder="Ej: remera1.jpg, remera2.jpg  o  VELA1\foto.jpg, VELA1\foto2.jpg" />
+          <p class="font-body text-[11px] text-charcoal/30 mt-1.5 leading-relaxed">
+            Separadas por coma. Las contrabarras <code class="bg-mist px-1 rounded text-[11px]">\</code>
+            se convierten a <code class="bg-mist px-1 rounded text-[11px]">/</code> automáticamente.
+            La ruta <code class="bg-mist px-1 rounded text-[11px]">img/</code> se antepone sola.
+          </p>
+        </div>
+
+        <!-- Feedback + submit -->
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+          <button id="submitBtn" type="submit"
+            class="bg-charcoal text-cream font-body text-xs tracking-widest uppercase px-6 py-3
+                   hover:bg-bark transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+            Guardar producto
+          </button>
+          <p id="adminMsg" class="font-body text-sm"></p>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ── TABLA DE PRODUCTOS ──────────────────────────── -->
+    <section class="bg-white border border-mist rounded-sm">
+
+      <div class="flex items-center justify-between px-6 py-4 border-b border-mist">
+        <h2 class="font-display text-xl font-light tracking-wide">Productos en catálogo</h2>
+        <button id="refreshBtn"
+          class="flex items-center gap-1.5 font-body text-xs tracking-widest uppercase text-charcoal/40 hover:text-bark transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M4 4v5h.582M20 20v-5h-.581M4.582 9A8 8 0 0120 12M19.418 15A8 8 0 014 12"/>
+          </svg>
+          Actualizar
+        </button>
+      </div>
+
+      <div id="tableWrap">
+        <table>
+          <thead>
+            <tr class="text-left text-[11px] font-body font-medium tracking-widest uppercase text-charcoal/40">
+              <th class="px-4 py-3 border-b border-mist">ID</th>
+              <th class="px-4 py-3 border-b border-mist">Nombre</th>
+              <th class="px-4 py-3 border-b border-mist">Precio</th>
+              <th class="px-4 py-3 border-b border-mist">Descripción</th>
+              <th class="px-4 py-3 border-b border-mist">Imágenes</th>
+              <th class="px-4 py-3 border-b border-mist"></th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody">
+            <tr>
+              <td colspan="6" class="px-4 py-10 text-center font-body text-sm text-charcoal/30">
+                <div class="flex flex-col items-center gap-2">
+                  <div class="w-5 h-5 border-2 border-bark/30 border-t-bark rounded-full animate-spin"></div>
+                  Cargando productos…
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+
+    <!-- ── INSTRUCCIONES GOOGLE SCRIPT ────────────────── -->
+    <section class="border border-mist rounded-sm p-6 space-y-3">
+      <h3 class="font-display text-lg font-light tracking-wide text-charcoal/60">Configuración pendiente</h3>
+      <p class="font-body text-sm text-charcoal/50 leading-relaxed">
+        Para que el formulario guarde datos en Google Sheets, reemplazá
+        <code class="bg-mist px-1.5 py-0.5 rounded text-xs">GOOGLE_SCRIPT_URL</code>
+        en <code class="bg-mist px-1.5 py-0.5 rounded text-xs">app.js</code> con la URL de tu Web App de Apps Script.
+      </p>
+      <details class="text-sm">
+        <summary class="font-body text-xs tracking-widest uppercase text-bark cursor-pointer hover:underline select-none">
+          Ver instrucciones rápidas
+        </summary>
+        <ol class="mt-3 space-y-1.5 font-body text-sm text-charcoal/60 list-decimal list-inside leading-relaxed">
+          <li>En la planilla de Google Sheets → <strong>Extensiones → Apps Script</strong>.</li>
+          <li>Pegá el código del Web App (doPost) que busca el ID y actualiza la fila, o la agrega si no existe.</li>
+          <li>Hacé clic en <strong>Implementar → Nueva implementación → Aplicación web</strong>.</li>
+          <li>Ejecutar como: <em>yo</em>. Acceso: <em>Cualquier usuario</em>.</li>
+          <li>Copiá la URL generada y reemplazá el placeholder en <code class="bg-mist px-1 rounded">app.js</code>.</li>
+        </ol>
+      </details>
+    </section>
+
+  </main>
+
+  <footer class="border-t border-mist py-6 mt-4">
+    <p class="text-center font-body text-xs text-charcoal/30 tracking-widest">HUMA · Panel interno</p>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    // Sincroniza el campo visible de ID con el hidden
+    const fieldIdVisible = document.getElementById('field_id_visible');
+    const fieldIdHidden  = document.getElementById('field_id');
+
+    // Genera ID tipo timestamp al cargar si está vacío
+    document.getElementById('generateIdBtn').addEventListener('click', () => {
+      const newId = 'p' + Date.now();
+      fieldIdHidden.value  = newId;
+      fieldIdVisible.value = newId;
+    });
+
+    // Cuando fillAdminForm() carga datos, refleja el ID hidden en el visible
+    const _origFillAdminForm = window.fillAdminForm;
+    window.fillAdminForm = function(p) {
+      _origFillAdminForm(p);
+      fieldIdVisible.value = fieldIdHidden.value;
+    };
+
+    // Cuando clearAdminForm() limpia, también limpia el visible y regenera ID
+    const _origClear = window.clearAdminForm;
+    window.clearAdminForm = function() {
+      _origClear();
+      const newId = 'p' + Date.now();
+      fieldIdHidden.value  = newId;
+      fieldIdVisible.value = newId;
+    };
+
+    // Auto-genera ID al cargar la página
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!fieldIdHidden.value) {
+        const newId = 'p' + Date.now();
+        fieldIdHidden.value  = newId;
+        fieldIdVisible.value = newId;
+      }
+    });
+  </script>
+</body>
+</html>
