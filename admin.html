@@ -44,7 +44,6 @@
       transition: border-color .15s;
     }
     .field-input:focus { border-color: #C8A882; }
-    /* table scroll */
     #tableWrap { overflow-x: auto; }
     table { border-collapse: collapse; width: 100%; min-width: 750px; }
     th { background: #F7F3EE; }
@@ -73,7 +72,6 @@
   <main class="max-w-5xl mx-auto px-4 py-10 space-y-10">
 
     <section class="bg-white border border-mist rounded-sm p-6 md:p-8">
-
       <div class="flex items-center justify-between mb-6">
         <h1 id="formTitle" class="font-display text-2xl font-light tracking-wide">Nuevo producto</h1>
         <button id="clearFormBtn"
@@ -83,7 +81,6 @@
       </div>
 
       <form id="adminForm" novalidate class="space-y-5">
-
         <input type="hidden" id="field_id" />
         <input type="hidden" id="field_estado" value="" />
 
@@ -109,25 +106,19 @@
                 ↻
               </button>
             </div>
-            <p class="font-body text-[11px] text-charcoal/30 mt-1">Editable. Se usa para identificar el producto en la planilla.</p>
           </div>
         </div>
 
         <div>
           <label for="field_descripcion" class="field-label">Descripción</label>
           <textarea id="field_descripcion" rows="3" class="field-input resize-none"
-            placeholder="Ej: Prenda de algodón 100%, talle único, colores disponibles: blanco y negro."></textarea>
+            placeholder="Ej: Prenda de algodón 100%..."></textarea>
         </div>
 
         <div>
           <label for="field_imagenes" class="field-label">Imágenes</label>
           <input id="field_imagenes" type="text" class="field-input"
-            placeholder="Ej: remera1.jpg, remera2.jpg  o  VELA1\foto.jpg, VELA1\foto2.jpg" />
-          <p class="font-body text-[11px] text-charcoal/30 mt-1.5 leading-relaxed">
-            Separadas por barra vertical <code class="bg-mist px-1 rounded text-[11px]">|</code>. Las contrabarras <code class="bg-mist px-1 rounded text-[11px]">\</code>
-            se convierten a <code class="bg-mist px-1 rounded text-[11px]">/</code> automáticamente.
-            La ruta <code class="bg-mist px-1 rounded text-[11px]">img/</code> se antepone sola.
-          </p>
+            placeholder="Ej: remera1.jpg, remera2.jpg" />
         </div>
 
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
@@ -138,20 +129,14 @@
           </button>
           <p id="adminMsg" class="font-body text-sm"></p>
         </div>
-
       </form>
     </section>
 
     <section class="bg-white border border-mist rounded-sm">
-
       <div class="flex items-center justify-between px-6 py-4 border-b border-mist">
         <h2 class="font-display text-xl font-light tracking-wide">Productos en catálogo</h2>
         <button id="refreshBtn"
           class="flex items-center gap-1.5 font-body text-xs tracking-widest uppercase text-charcoal/40 hover:text-bark transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="M4 4v5h.582M20 20v-5h-.581M4.582 9A8 8 0 0120 12M19.418 15A8 8 0 014 12"/>
-          </svg>
           Actualizar
         </button>
       </div>
@@ -172,47 +157,66 @@
           <tbody id="adminTableBody">
             <tr>
               <td colspan="7" class="px-4 py-10 text-center font-body text-sm text-charcoal/30">
-                <div class="flex flex-col items-center gap-2">
-                  <div class="w-5 h-5 border-2 border-bark/30 border-t-bark rounded-full animate-spin"></div>
-                  Cargando productos…
-                </div>
+                Cargando productos…
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-
     </section>
-
   </main>
-
-  <footer class="border-t border-mist py-6 mt-4">
-    <p class="text-center font-body text-xs text-charcoal/30 tracking-widest">HUMA · Panel interno</p>
-  </footer>
 
   <script src="app.js"></script>
   <script>
-    // Sincroniza el campo visible de ID con el hidden
+    // URL LOCAL INTERNA PARA EVITAR CONFLICTOS DE ENTRADA
+    const LOCAL_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT26n3U0sniaztj-nS4Qm8iro_fAvED2sQ5BLB7jlVE-NY0byZNmCJfBaiOQEm7qIFKxTkBNeohLwGI/pub?output=csv";
+    const LOCAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxccGfv-jhftv2il90Uisbe_idJTZy-AOvBIwha45YYsbRl_5GcNOMD6UwUAQChOVfzfw/exec";
+
     const fieldIdVisible = document.getElementById('field_id_visible');
     const fieldIdHidden  = document.getElementById('field_id');
 
-    // Genera ID tipo timestamp al cargar si está vacío
     document.getElementById('generateIdBtn').addEventListener('click', () => {
       const newId = 'p' + Date.now();
       fieldIdHidden.value  = newId;
       fieldIdVisible.value = newId;
     });
 
-    // Inyección de lógica adaptada para renderizar la tabla con soporte de la columna Estado y visibilidad directa
+    // PARSER LOCAL AUTOMÁTICO
+    function localParseCSV(text) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return [];
+      
+      const splitLine = (line) => {
+        const res = []; let cur = ''; let q = false;
+        for (let i=0; i<line.length; i++) {
+          if (line[i] === '"') q = !q;
+          else if (line[i] === ',' && !q) { res.push(cur.trim().replace(/^"|"$/g, '')); cur = ''; }
+          else cur += line[i];
+        }
+        res.push(cur.trim().replace(/^"|"$/g, ''));
+        return res;
+      };
+
+      const headers = splitLine(lines[0]);
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = splitLine(lines[i]);
+        if (vals.length === 0 || (vals.length === 1 && vals[0] === "")) continue;
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h.trim()] = vals[idx] ? vals[idx].trim() : ''; });
+        rows.push(obj);
+      }
+      return rows;
+    }
+
     window.loadAdminProducts = async function() {
       const tbody = document.getElementById('adminTableBody');
-      const msg   = document.getElementById('adminMsg');
       if (!tbody) return;
 
       try {
-        const res  = await fetch(SHEET_CSV_URL);
+        const res  = await fetch(LOCAL_SHEET_URL);
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const rows = parseCSV(await res.text());
+        const rows = localParseCSV(await res.text());
 
         tbody.innerHTML = rows.map(p => {
           const isOculto = p.estado?.toLowerCase().trim() === 'oculto';
@@ -220,8 +224,8 @@
           const badgeText = isOculto ? 'Oculto' : 'Visible';
           
           const toggleActionBtn = isOculto 
-            ? `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'mostrar')" title="Mostrar en la web" class="text-xs bg-green-50 text-green-700 hover:bg-green-100 px-2 py-1 rounded transition-colors flex items-center gap-1">👁️ Mostrar</button>`
-            : `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'ocultar')" title="Ocultar de la web" class="text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded transition-colors flex items-center gap-1">👁️‍🗨️ Ocultar</button>`;
+            ? `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'mostrar')" class="text-xs bg-green-50 text-green-700 hover:bg-green-100 px-2 py-1 rounded transition-colors">👁️ Mostrar</button>`
+            : `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'ocultar')" class="text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded transition-colors">👁️‍🗨️ Ocultar</button>`;
 
           return `
             <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
@@ -236,26 +240,22 @@
               <td class="px-4 py-3 text-right">
                 <div class="flex items-center justify-end gap-1.5">
                   ${toggleActionBtn}
-                  <button onclick="fillAdminForm(${JSON.stringify(p).replace(/"/g, '&quot;')})"
-                    class="text-xs bg-gray-100 hover:bg-gray-200 text-charcoal px-2 py-1 rounded transition-colors">Editar</button>
-                  <button onclick="deleteProduct('${p.id}')"
-                    class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded transition-colors">Eliminar</button>
+                  <button onclick="fillAdminForm(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">Editar</button>
+                  <button onclick="deleteProduct('${p.id}')" class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded">Eliminar</button>
                 </div>
               </td>
             </tr>
           `;
         }).join('');
       } catch (err) {
-        if (msg) { msg.textContent = 'Error cargando productos: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-600">Error: ${err.message}</td></tr>`;
       }
     };
 
-    // Función directa para cambiar visibilidad sin entrar al formulario complejo
     window.toggleProductVisibility = async function(producto, accion) {
       const msg = document.getElementById('adminMsg');
       if (msg) { msg.textContent = 'Actualizando visibilidad…'; msg.className = 'text-charcoal/60 text-sm animate-pulse'; }
       
-      const nuevoEstado = accion === 'ocultar' ? 'oculto' : '';
       const payload = {
         action: 'save',
         id: producto.id,
@@ -263,76 +263,46 @@
         precio: producto.precio,
         descripcion: producto.descripcion || '',
         imagenes: producto.imagenes || '',
-        estado: nuevoEstado
+        estado: accion === 'ocultar' ? 'oculto' : ''
       };
 
       try {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        await fetch(LOCAL_SCRIPT_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-
-        if (msg) { 
-          msg.textContent = accion === 'ocultar' ? '✓ Producto ocultado correctamente.' : '✓ Producto visible en la web.'; 
-          msg.className = 'text-green-600 text-sm font-medium'; 
-        }
+        if (msg) { msg.textContent = '✓ Cambios aplicados con éxito.'; msg.className = 'text-green-600 text-sm font-medium'; }
         setTimeout(loadAdminProducts, 1500);
       } catch (err) {
-        if (msg) { msg.textContent = 'Error al cambiar visibilidad: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+        if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'text-red-600 text-sm'; }
       }
     };
 
-    // Al rellenar formulario mapeamos también el campo oculto "estado"
+    // Sobrecarga de sincronización nativa de IDs
     const _origFillAdminForm = window.fillAdminForm;
     window.fillAdminForm = function(p) {
       if (typeof _origFillAdminForm === 'function') _origFillAdminForm(p);
-      fieldIdVisible.value = fieldIdHidden.value;
-      const elEstado = document.getElementById('field_estado');
-      if (elEstado) elEstado.value = p.estado || '';
-    };
-
-    // Al limpiar formulario vaciamos también el estado interno
-    const _origClear = window.clearAdminForm;
-    window.clearAdminForm = function() {
-      if (typeof _origClear === 'function') _origClear();
-      const newId = 'p' + Date.now();
-      fieldIdHidden.value  = newId;
-      fieldIdVisible.value = newId;
-      const elEstado = document.getElementById('field_estado');
-      if (elEstado) elEstado.value = '';
-    };
-
-    // Modificación sutil al submit del formulario para incluir el valor de la columna 'estado' si existiera una edición previa
-    const formEl = document.getElementById('adminForm');
-    if (formEl) {
-      formEl.addEventListener('submit', async function(e) {
-        // Dejamos que corra la lógica normal de app.js pero le inyectamos el valor exacto de 'estado' de fondo
-        const origSubmit = window.submitAdminForm;
-        // Solo si la app.js aún no interceptó completamente el evento modificando el flujo nativo
-      });
-    }
-
-    // Intercepta la función deleteProduct global para forzar recarga total de la UI tras limpiar en Google
-    const _origDeleteProduct = window.deleteProduct;
-    window.deleteProduct = async function(id) {
-      if (typeof _origDeleteProduct === 'function') {
-        await _origDeleteProduct(id);
-        setTimeout(() => {
-          location.reload();
-        }, 2000);
+      else {
+        ['id', 'nombre', 'precio', 'descripcion', 'imagenes', 'estado'].forEach(k => {
+          const el = document.getElementById('field_' + k); if (el) el.value = p[k] || '';
+        });
+        document.getElementById('formTitle').textContent = 'Editar producto';
+        document.getElementById('submitBtn').textContent = 'Actualizar producto';
       }
+      fieldIdVisible.value = fieldIdHidden.value;
     };
 
-    // Auto-genera ID al cargar la página e inicializa la UI extendida
+    document.getElementById('refreshBtn').addEventListener('click', loadAdminProducts);
+
     document.addEventListener('DOMContentLoaded', () => {
       if (!fieldIdHidden.value) {
         const newId = 'p' + Date.now();
         fieldIdHidden.value  = newId;
         fieldIdVisible.value = newId;
       }
-      setTimeout(loadAdminProducts, 300);
+      setTimeout(loadAdminProducts, 500);
     });
   </script>
 </body>
