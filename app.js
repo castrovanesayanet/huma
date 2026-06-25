@@ -1,323 +1,86 @@
 // ══════════════════════════════════════════════════════
-//  CONFIGURACIÓN GLOBAL
+//  CONFIGURACIÓN
 // ══════════════════════════════════════════════════════
-window.SHEET_CSV_URL     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT26n3U0sniaztj-nS4Qm8iro_fAvED2sQ5BLB7jlVE-NY0byZNmCJfBaiOQEm7qIFKxTkBNeohLwGI/pub?output=csv";
-window.GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxccGfv-jhftv2il90Uisbe_idJTZy-AOvBIwha45YYsbRl_5GcNOMD6UwUAQChOVfzfw/exec"; 
-window.WHATSAPP_NUMBER   = "5491123456789"; // Reemplazar con el número real de WhatsApp de la marca
+const SHEET_CSV_URL     = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT26n3U0sniaztj-nS4Qm8iro_fAvED2sQ5BLB7jlVE-NY0byZNmCJfBaiOQEm7qIFKxTkBNeohLwGI/pub?output=csv";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxccGfv-jhftv2il90Uisbe_idJTZy-AOvBIwha45YYsbRl_5GcNOMD6UwUAQChOVfzfw/exec"; 
+const WHATSAPP_NUMBER   = "5491123456789"; 
 // ══════════════════════════════════════════════════════
 
 const CART_KEY = 'huma_cart';
 const IS_ADMIN = typeof window !== 'undefined' && window.location.pathname.includes('admin');
 
-// ─── CSV Parser Global ────────────────────────────────
+// ─── CSV Parser Senior & Anti-Basura ───────────────────
 
-window.parseCSV = function(text) {
-  const lines = text.trim().split('\n');
+function parseCSV(text) {
+  if (!text) return [];
+  // Elimina de raíz los retornos de carro (\r) que causan celdas y filas fantasmas
+  const lines = text.replace(/\r/g, "").split('\n');
   if (lines.length < 2) return [];
+  
   const headers = splitCSVLine(lines[0]);
   const rows = [];
+  
   for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue; 
+    
     const vals = splitCSVLine(lines[i]);
-    if (vals.length === 0 || (vals.length === 1 && vals[0] === "")) continue;
     const obj = {};
-    headers.forEach((h, idx) => {
-      obj[h.trim()] = vals[idx] ? vals[idx].trim() : '';
-    });
-    rows.push(obj);
+    headers.forEach((h, idx) => { obj[h.trim()] = vals[idx] ? vals[idx].trim() : ''; });
+    
+    // Validación de Integridad Estricta: Si no tiene ID o Nombre real, es basura del CSV
+    if (obj.id && obj.id !== "" && obj.nombre && obj.nombre !== "") {
+      rows.push(obj);
+    }
   }
   return rows;
-};
+}
 
 function splitCSVLine(line) {
-  const result = [];
-  let current = '';
+  const res = [];
+  let cur = '';
   let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
+    const c = line[i];
+    if (c === '"') {
       inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
-      result.push(current.trim().replace(/^"|"$/g, ''));
-      current = '';
+    } else if (c === ',' && !inQuotes) {
+      res.push(cur.trim().replace(/^"|"$/g, ''));
+      cur = '';
     } else {
-      current += char;
+      cur += c;
     }
   }
-  result.push(current.trim().replace(/^"|"$/g, ''));
-  return result;
+  res.push(cur.trim().replace(/^"|"$/g, ''));
+  return res;
 }
 
-// ─── Carrito de Compras ───────────────────────────────
-
-let cart = [];
-try {
-  cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
-} catch(e) { cart = []; }
-
-function saveCart() {
-  localStorage.setItem(CART_KEY, JSON.stringify(cart));
-  updateCartUI();
-}
-
-function addToCart(id, nombre, precio, imagen) {
-  const parsedPrecio = parseFloat(precio) || 0;
-  const existing = cart.find(item => item.id === id);
-  if (existing) {
-    existing.qty += 1;
-  } else {
-    cart.push({ id, nombre, precio: parsedPrecio, imagen, qty: 1 });
-  }
-  saveCart();
-  openCartDrawer();
-}
-
-function updateQty(id, delta) {
-  const item = cart.find(i => i.id === id);
-  if (!item) return;
-  item.qty += delta;
-  if (item.qty <= 0) {
-    cart = cart.filter(i => i.id !== id);
-  }
-  saveCart();
-}
-
-function openCartDrawer() {
-  const drawer = document.getElementById('cartDrawer');
-  const overlay = document.getElementById('cartOverlay');
-  if(drawer && overlay) {
-    overlay.classList.remove('hidden');
-    setTimeout(() => {
-      drawer.classList.add('open');
-      overlay.style.opacity = "1";
-    }, 20);
-  }
-}
-
-// Hace la función de cierre accesible también desde fuera si es necesario
-window.closeCartDrawer = function() {
-  const drawer = document.getElementById('cartDrawer');
-  const overlay = document.getElementById('cartOverlay');
-  if(drawer && overlay) {
-    drawer.classList.remove('open');
-    overlay.style.opacity = "0";
-    setTimeout(() => overlay.classList.add('hidden'), 300);
-  }
-};
-
-function updateCartUI() {
-  const navCount = document.getElementById('navCartCount');
-  const floatCount = document.getElementById('floatingCartCount');
-  const itemsContainer = document.getElementById('cartItems');
-  const footer = document.getElementById('cartFooter');
-  const emptyState = document.getElementById('cartEmpty');
-  const totalEl = document.getElementById('cartTotal');
-
-  const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
-  const totalPrice = cart.reduce((acc, item) => acc + (item.precio * item.qty), 0);
-
-  [navCount, floatCount].forEach(el => {
-    if (el) {
-      if (totalItems > 0) {
-        el.textContent = totalItems;
-        el.classList.remove('hidden');
-      } else {
-        el.classList.add('hidden');
-      }
-    }
-  });
-
-  if (!itemsContainer) return;
-
-  if (cart.length === 0) {
-    itemsContainer.innerHTML = '';
-    footer?.classList.add('hidden');
-    emptyState?.classList.remove('hidden');
-    return;
-  }
-
-  emptyState?.classList.add('hidden');
-  footer?.classList.remove('hidden');
-  if (totalEl) totalEl.textContent = `$${totalPrice.toLocaleString('es-AR')}`;
-
-  itemsContainer.innerHTML = cart.map(item => `
-    <div class="flex items-center gap-3 py-3 border-b border-mist/50 last:border-none">
-      <img src="${item.imagen}" alt="${item.nombre}" class="w-16 h-20 object-cover bg-mist rounded-sm shrink-0" />
-      <div class="flex-1 min-w-0">
-        <h4 class="font-body text-sm font-medium truncate">${item.nombre}</h4>
-        <p class="font-display text-base text-charcoal/70 mt-0.5">$${item.precio.toLocaleString('es-AR')}</p>
-        <div class="flex items-center gap-2 mt-2">
-          <button onclick="updateQty('${item.id}', -1)" class="w-6 h-6 border border-mist flex items-center justify-center text-xs hover:border-charcoal rounded-sm">-</button>
-          <span class="font-body text-xs min-w-[16px] text-center">${item.qty}</span>
-          <button onclick="updateQty('${item.id}', 1)" class="w-6 h-6 border border-mist flex items-center justify-center text-xs hover:border-charcoal rounded-sm">+</button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function sendWhatsAppOrder() {
-  if (cart.length === 0) return;
-  let text = "Hola HUMA, me gustaría realizar el siguiente pedido:\n\n";
-  cart.forEach(item => {
-    text += `• ${item.nombre} (x${item.qty}) - $${(item.precio * item.qty).toLocaleString('es-AR')}\n`;
-  });
-  const totalPrice = cart.reduce((acc, item) => acc + (item.precio * item.qty), 0);
-  text += `\n*Total: $${totalPrice.toLocaleString('es-AR')}*`;
-  
-  window.open(`https://wa.me/${window.WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
-}
-
-function initCartEvents() {
-  document.getElementById('navCartBtn')    ?.addEventListener('click', openCartDrawer);
-  document.getElementById('floatingCart')  ?.addEventListener('click', openCartDrawer);
-  document.getElementById('closeCartBtn')   ?.addEventListener('click', window.closeCartDrawer);
-  document.getElementById('cartOverlay')   ?.addEventListener('click', window.closeCartDrawer);
-  document.getElementById('whatsappBtn')   ?.addEventListener('click', sendWhatsAppOrder);
-}
-
-// ─── Modal de Imágenes Extendidas ────────────────────
-
-let currentModalImages = [];
-let currentModalIdx = 0;
-
-function openImageModal(imgSrcsStr, startIdx = 0) {
-  const srcs = imgSrcsStr.split('|').map(s => s.trim()).filter(Boolean);
-  if(srcs.length === 0) return;
-  
-  currentModalImages = srcs.map(s => {
-    let clean = s.replace(/\\/g, '/');
-    if(!clean.startsWith('http') && !clean.startsWith('img/')) clean = 'img/' + clean;
-    return clean;
-  });
-  
-  currentModalIdx = startIdx;
-  const modal = document.getElementById('imageModal');
-  if(modal) {
-    modal.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    updateModalUI();
-  }
-}
-
-function updateModalUI() {
-  const img = document.getElementById('modalImg');
-  const counter = document.getElementById('modalCounter');
-  const prev = document.getElementById('modalPrev');
-  const next = document.getElementById('modalNext');
-  
-  if(!img) return;
-  img.src = currentModalImages[currentModalIdx];
-  
-  if(currentModalImages.length <= 1) {
-    if(prev) prev.style.display = 'none';
-    if(next) next.style.display = 'none';
-    if(counter) counter.textContent = '';
-  } else {
-    if(prev) prev.style.display = 'flex';
-    if(next) next.style.display = 'flex';
-    if(counter) counter.textContent = `${currentModalIdx + 1} / ${currentModalImages.length}`;
-  }
-}
-
-function modalPrev() {
-  if(currentModalImages.length <= 1) return;
-  currentModalIdx = (currentModalIdx - 1 + currentModalImages.length) % currentModalImages.length;
-  updateModalUI();
-}
-
-function modalNext() {
-  if(currentModalImages.length <= 1) return;
-  currentModalIdx = (currentModalIdx + 1) % currentModalImages.length;
-  updateModalUI();
-}
-
-function closeImageModal() {
-  const modal = document.getElementById('imageModal');
-  if(modal) {
-    modal.classList.remove('open');
-    document.body.style.overflow = '';
-  }
-}
-
-function initModalEvents() {
-  document.getElementById('modalClose')   ?.addEventListener('click', closeImageModal);
-  document.getElementById('modalBackdrop')?.addEventListener('click', closeImageModal);
-  document.getElementById('modalPrev')    ?.addEventListener('click', modalPrev);
-  document.getElementById('modalNext')    ?.addEventListener('click', modalNext);
-  
-  document.addEventListener('keydown', (e) => {
-    const modal = document.getElementById('imageModal');
-    if(!modal || !modal.classList.contains('open')) return;
-    if(e.key === 'Escape') closeImageModal();
-    if(e.key === 'ArrowLeft') modalPrev();
-    if(e.key === 'ArrowRight') modalNext();
-  });
-}
-
-// ─── Renderizado del Catálogo (Web Principal) ─────────
-
-const cardState = {};
+// ─── Catálogo de Productos ─────────────────────────────
 
 function renderProducts(products) {
   const grid = document.getElementById('productGrid');
-  const countEl = document.getElementById('productCount');
   if (!grid) return;
 
   if (products.length === 0) {
-    grid.innerHTML = '<div class="col-span-full py-12 text-center text-charcoal/40 font-display italic text-lg">Próximamente nuevas piezas</div>';
-    if(countEl) countEl.textContent = '0 piezas';
+    grid.innerHTML = `<p class="col-span-full text-center text-charcoal/40 font-body text-sm py-12">No hay productos disponibles por el momento.</p>`;
     return;
   }
 
-  if(countEl) countEl.textContent = `${products.length} ${products.length === 1 ? 'pieza' : 'piezas'}`;
-
   grid.innerHTML = products.map(p => {
-    const images = p.imagenes ? p.imagenes.split('|').map(s => s.trim()).filter(Boolean) : [];
-    if (images.length === 0) images.push('placeholder.jpg');
-
-    cardState[p.id] = { images, current: 0 };
-
-    let firstImg = images[0].replace(/\\/g, '/');
-    if (!firstImg.startsWith('http') && !firstImg.startsWith('img/')) firstImg = 'img/' + firstImg;
-
-    const hasNav = images.length > 1;
-    const navArrows = hasNav ? `
-      <button class="card-arrow left" data-id="${p.id}" aria-label="Foto anterior">&#8249;</button>
-      <button class="card-arrow right" data-id="${p.id}" aria-label="Siguiente foto">&#8250;</button>
-    ` : '';
+    const imgs = p.imagenes ? p.imagenes.split(',').map(i => i.trim()) : [];
+    const firstImg = imgs[0] || 'https://via.placeholder.com/600x800?text=HUMA';
     
-    const counter = hasNav ? `<span class="card-counter" id="count-${p.id}">1/${images.length}</span>` : '';
-
-    let thumbs = '';
-    if (hasNav) {
-      thumbs = `<div class="thumb-strip">` + images.map((img, i) => {
-        let tUrl = img.replace(/\\/g, '/');
-        if (!tUrl.startsWith('http') && !tUrl.startsWith('img/')) tUrl = 'img/' + tUrl;
-        return `<img src="${tUrl}" class="${i===0?'active':''}" data-id="${p.id}" data-idx="${i}" alt="" />`;
-      }).join('') + `</div>`;
-    }
-
     return `
-      <div class="product-card flex flex-col bg-transparent group">
-        <div class="card-img-wrap">
-          <img src="${firstImg}" id="img-${p.id}" data-raw="${p.imagenes || ''}" alt="${p.nombre}" />
-          ${navArrows}
-          ${counter}
+      <div class="product-card group cursor-pointer" data-id="${p.id}">
+        <div class="aspect-[3/4] w-full bg-mist overflow-hidden relative mb-4">
+          <img src="${firstImg}" alt="${p.nombre}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700" loading="lazy" />
         </div>
-        ${thumbs}
-        <div class="pt-4 pb-2 flex-1 flex flex-col justify-between">
+        <div class="flex justify-between items-start gap-4">
           <div class="space-y-1">
-            <h3 class="font-body text-sm font-medium text-charcoal tracking-wide truncate">${p.nombre}</h3>
-            <p class="font-body text-xs text-charcoal/50 line-clamp-2 leading-relaxed min-h-[2rem]">${p.descripcion || ''}</p>
+            <h3 class="font-display text-lg font-light tracking-wide text-charcoal group-hover:text-bark transition-colors">${p.nombre}</h3>
+            <p class="font-body text-xs text-charcoal/40 line-clamp-1">${p.descripcion || ''}</p>
           </div>
-          <div class="mt-4 flex items-baseline justify-between gap-2">
-            <span class="font-display text-xl font-light text-charcoal/90">$${(parseFloat(p.precio)||0).toLocaleString('es-AR')}</span>
-            <button onclick="addToCart('${p.id}', '${p.nombre.replace(/'/g, "\\'")}', '${p.precio}', '${firstImg}')"
-              class="font-body text-[11px] font-medium tracking-widest uppercase border border-charcoal/20 px-3 py-1.5 rounded-sm
-                     hover:bg-charcoal hover:text-cream hover:border-charcoal transition-all duration-200">
-              Agregar
-            </button>
-          </div>
+          <p class="font-body text-sm font-medium text-charcoal shrink-0">$${parseFloat(p.precio || 0).toLocaleString('es-AR')}</p>
         </div>
       </div>
     `;
@@ -325,172 +88,338 @@ function renderProducts(products) {
 }
 
 function initProductGridEvents(products) {
-  const grid = document.getElementById('productGrid');
-  if (!grid) return;
+  document.getElementById('productGrid')?.addEventListener('click', (e) => {
+    const card = e.target.closest('.product-card');
+    if (!card) return;
+    const pid = card.dataset.id;
+    const p = products.find(x => x.id === pid);
+    if (p) openModal(p);
+  });
+}
 
-  grid.addEventListener('click', (e) => {
-    const btn = e.target.closest('.card-arrow');
-    if (btn) {
-      e.stopPropagation();
-      const id = btn.dataset.id;
-      const state = cardState[id];
-      if (!state) return;
+// ─── Modal de Detalles ────────────────────────────────
 
-      if (btn.classList.contains('right')) {
-        state.current = (state.current + 1) % state.images.length;
-      } else {
-        state.current = (state.current - 1 + state.images.length) % state.images.length;
-      }
-      switchCardImage(id, state.current);
-      return;
+let currentModalProduct = null;
+
+function openModal(p) {
+  currentModalProduct = p;
+  const modal = document.getElementById('productModal');
+  if (!modal) return;
+
+  document.getElementById('modalNombre').textContent = p.nombre;
+  document.getElementById('modalPrecio').textContent = `$${parseFloat(p.precio || 0).toLocaleString('es-AR')}`;
+  document.getElementById('modalDescripcion').textContent = p.descripcion || '';
+
+  const imgs = p.imagenes ? p.imagenes.split(',').map(i => i.trim()) : [];
+  const gallery = document.getElementById('modalGallery');
+  
+  if (gallery) {
+    if (imgs.length === 0) {
+      gallery.innerHTML = `<img src="https://via.placeholder.com/600x800?text=HUMA" class="w-full h-full object-cover" />`;
+    } else {
+      gallery.innerHTML = imgs.map(img => `<div class="w-full h-full shrink-0"><img src="${img}" class="w-full h-full object-cover" /></div>`).join('');
     }
+    gallery.scrollLeft = 0;
+  }
 
-    const thumb = e.target.closest('.thumb-strip img');
-    if (thumb) {
-      e.stopPropagation();
-      const id = thumb.dataset.id;
-      const idx = parseInt(thumb.dataset.idx);
-      if (cardState[id]) cardState[id].current = idx;
-      switchCardImage(id, idx);
-      return;
-    }
+  modal.classList.remove('pointer-events-none', 'opacity-0');
+  document.body.classList.add('overflow-hidden');
+}
 
-    const mainImg = e.target.closest('.card-img-wrap img');
-    if (mainImg) {
-      const raw = mainImg.dataset.raw;
-      const id = mainImg.id.replace('img-', '');
-      const currentIdx = cardState[id] ? cardState[id].current : 0;
-      openImageModal(raw, currentIdx);
+function closeModal() {
+  const modal = document.getElementById('productModal');
+  if (!modal) return;
+  modal.classList.add('pointer-events-none', 'opacity-0');
+  document.body.classList.remove('overflow-hidden');
+  currentModalProduct = null;
+}
+
+// ─── Bolsa de Compras (Carrito) ─────────────────────────
+
+let cart = JSON.parse(localStorage.getItem(CART_KEY)) || [];
+
+function saveCart() {
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  updateCartUI();
+}
+
+function addToCart(p) {
+  const item = cart.find(x => x.id === p.id);
+  if (item) {
+    item.qty += 1;
+  } else {
+    cart.push({ id: p.id, nombre: p.nombre, precio: parseFloat(p.precio || 0), imagenes: p.imagenes, qty: 1 });
+  }
+  saveCart();
+}
+
+window.updateQty = function(id, delta) {
+  const item = cart.find(x => x.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    cart = cart.filter(x => x.id !== id);
+  }
+  saveCart();
+};
+
+function updateCartUI() {
+  const countEl = document.getElementById('cartCount');
+  const itemsEl = document.getElementById('cartItems');
+  const emptyEl = document.getElementById('cartEmpty');
+  const checkoutEl = document.getElementById('cartCheckout');
+  const totalEl = document.getElementById('cartTotal');
+
+  const totalItems = cart.reduce((acc, x) => acc + x.qty, 0);
+  if (countEl) countEl.textContent = totalItems;
+
+  if (cart.length === 0) {
+    emptyEl?.classList.remove('hidden');
+    checkoutEl?.classList.add('hidden');
+    if (itemsEl) itemsEl.innerHTML = '';
+    return;
+  }
+
+  emptyEl?.classList.add('hidden');
+  checkoutEl?.classList.remove('hidden');
+
+  if (itemsEl) {
+    itemsEl.innerHTML = cart.map(x => {
+      const imgs = x.imagenes ? x.imagenes.split(',').map(i => i.trim()) : [];
+      const firstImg = imgs[0] || 'https://via.placeholder.com/150?text=HUMA';
+      return `
+        <div class="flex gap-4 border-b border-mist/50 pb-4">
+          <img src="${firstImg}" class="w-16 h-20 object-cover bg-mist shrink-0" />
+          <div class="flex-1 min-w-0 flex flex-col justify-between">
+            <div>
+              <h4 class="font-display text-base font-light text-charcoal truncate">${x.nombre}</h4>
+              <p class="font-body text-xs text-charcoal/50 mt-0.5">$${x.precio.toLocaleString('es-AR')}</p>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center border border-mist rounded-sm">
+                <button onclick="window.updateQty('${x.id}', -1)" class="px-2 py-0.5 text-charcoal/40 hover:text-charcoal transition-colors text-sm">-</button>
+                <span class="px-2 text-xs font-body text-charcoal min-w-[20px] text-center">${x.qty}</span>
+                <button onclick="window.updateQty('${x.id}', 1)" class="px-2 py-0.5 text-charcoal/40 hover:text-charcoal transition-colors text-sm">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const total = cart.reduce((acc, x) => acc + (x.precio * x.qty), 0);
+  if (totalEl) totalEl.textContent = `$${total.toLocaleString('es-AR')}`;
+}
+
+function openCart() {
+  document.getElementById('cartSidebar')?.classList.remove('translate-x-full');
+  document.getElementById('cartOverlay')?.classList.remove('pointer-events-none', 'opacity-0');
+}
+
+function closeCart() {
+  document.getElementById('cartSidebar')?.classList.add('translate-x-full');
+  document.getElementById('cartOverlay')?.classList.add('pointer-events-none', 'opacity-0');
+}
+
+function checkoutWhatsApp() {
+  if (cart.length === 0) return;
+  let text = `*HUMA - NUEVO PEDIDO*\n\n`;
+  cart.forEach(x => {
+    text += `• ${x.nombre} (x${x.qty}) — $${(x.precio * x.qty).toLocaleString('es-AR')}\n`;
+  });
+  const total = cart.reduce((acc, x) => acc + (x.precio * x.qty), 0);
+  text += `\n*TOTAL:* $${total.toLocaleString('es-AR')}`;
+  
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+function initCartEvents() {
+  document.getElementById('openCartBtn')?.addEventListener('click', openCart);
+  document.getElementById('closeCartBtn')?.addEventListener('click', closeCart);
+  document.getElementById('cartOverlay')?.addEventListener('click', closeCart);
+  document.getElementById('whatsappCheckoutBtn')?.addEventListener('click', checkoutWhatsApp);
+}
+
+function initModalEvents() {
+  document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
+  document.getElementById('productModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'productModal') closeModal();
+  });
+  document.getElementById('addToCartBtn')?.addEventListener('click', () => {
+    if (currentModalProduct) {
+      addToCart(currentModalProduct);
+      closeModal();
+      openCart();
     }
   });
 }
 
-function switchCardImage(pId, idx) {
-  const state = cardState[pId];
-  if (!state) return;
-  const imgEl = document.getElementById(`img-${pId}`);
-  const countEl = document.getElementById(`count-${pId}`);
-  if (!imgEl) return;
+// ─── Panel de Administración ────────────────────────────
 
-  let nextSrc = state.images[idx].replace(/\\/g, '/');
-  if (!nextSrc.startsWith('http') && !nextSrc.startsWith('img/')) nextSrc = 'img/' + nextSrc;
-  imgEl.src = nextSrc;
+async function loadAdminProducts() {
+  const tbody = document.getElementById('adminTableBody');
+  if (!tbody) return;
 
-  if (countEl) countEl.textContent = `${idx + 1}/${state.images.length}`;
+  try {
+    const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = parseCSV(await res.text());
 
-  const wrapper = imgEl.closest('.product-card');
-  if (wrapper) {
-    wrapper.querySelectorAll('.thumb-strip img').forEach((t, i) => {
-      if (i === idx) t.classList.add('active');
-      else t.classList.remove('active');
-    });
+    if (rows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center font-body text-sm text-charcoal/30">No hay productos cargados en la planilla.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(p => {
+      const isOculto = p.estado?.toLowerCase().trim() === 'oculto';
+      const badgeColor = isOculto ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700 border border-green-200/50';
+      const badgeText = isOculto ? 'Oculto' : 'Visible';
+      
+      const toggleActionBtn = isOculto 
+        ? `<button onclick="window.toggleProductVisibility('${p.id}', 'mostrar')" class="text-xs bg-green-50 text-green-700 hover:bg-green-100 px-2 py-1 rounded transition-colors">👁️ Mostrar</button>`
+        : `<button onclick="window.toggleProductVisibility('${p.id}', 'ocultar')" class="text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded transition-colors">👁️‍🗨️ Ocultar</button>`;
+
+      return `
+        <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+          <td class="px-4 py-3 text-sm font-mono text-gray-500">${p.id}</td>
+          <td class="px-4 py-3 text-sm font-medium">${p.nombre}</td>
+          <td class="px-4 py-3 text-sm font-medium">$${parseFloat(p.precio || 0).toLocaleString('es-AR')}</td>
+          <td class="px-4 py-3 text-sm">
+            <span class="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${badgeColor}">${badgeText}</span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-400 max-w-[180px] truncate">${p.descripcion || '—'}</td>
+          <td class="px-4 py-3 text-sm text-gray-400 max-w-[120px] truncate">${p.imagenes || '—'}</td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-1.5">
+              ${toggleActionBtn}
+              <button onclick="window.fillAdminForm(${JSON.stringify(p).replace(/"/g, '&quot;')})" class="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded">Editar</button>
+              <button onclick="window.deleteProduct('${p.id}')" class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded">Eliminar</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-red-600">Error: ${err.message}</td></tr>`;
   }
 }
 
-// ─── Panel de Administración (ABM) ────────────────────
+async function sendToGoogleScript(payload) {
+  const urlParams = new URLSearchParams(payload).toString();
+  try {
+    await fetch(`${GOOGLE_SCRIPT_URL}?${urlParams}`, { method: 'POST', mode: 'no-cors' });
+  } catch (e) {
+    console.error("Error en sincronización:", e);
+  }
+}
+
+window.toggleProductVisibility = async function(id, accion) {
+  const msg = document.getElementById('adminMsg');
+  if (msg) { msg.textContent = 'Actualizando visibilidad…'; msg.className = 'text-charcoal/60 text-sm animate-pulse'; }
+  if (typeof window.bumpVersion === 'function') window.bumpVersion();
+
+  try {
+    const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now());
+    const rows = parseCSV(await res.text());
+    const p = rows.find(x => x.id === id);
+    if (!p) return;
+
+    await sendToGoogleScript({
+      action: 'save',
+      id: p.id,
+      nombre: p.nombre,
+      precio: p.precio,
+      descripcion: p.descripcion || '',
+      imagenes: p.imagenes || '',
+      estado: accion === 'ocultar' ? 'oculto' : ''
+    });
+
+    if (msg) { msg.textContent = '✓ Visibilidad modificada.'; msg.className = 'text-green-600 text-sm font-medium'; }
+    setTimeout(loadAdminProducts, 2000);
+  } catch (err) {
+    if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+  }
+};
+
+window.deleteProduct = async function(id) {
+  if (!confirm('¿Eliminar producto permanentemente?')) return;
+  const msg = document.getElementById('adminMsg');
+  if (msg) { msg.textContent = 'Eliminando…'; msg.className = 'text-amber-600 text-sm'; }
+  if (typeof window.bumpVersion === 'function') window.bumpVersion();
+
+  try {
+    await sendToGoogleScript({ action: 'delete', id: id });
+    if (msg) { msg.textContent = '✓ Producto eliminado.'; msg.className = 'text-green-600 text-sm'; }
+    setTimeout(loadAdminProducts, 2000);
+  } catch (err) {
+    if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+  }
+};
 
 window.fillAdminForm = function(p) {
-  const titles = { 'formTitle': 'Editar producto', 'submitBtn': 'Actualizar producto' };
-  for (const id in titles) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = titles[id];
-  }
   ['id', 'nombre', 'precio', 'descripcion', 'imagenes', 'estado'].forEach(k => {
-    const el = document.getElementById('field_' + k);
-    if (el) el.value = p[k] || '';
+    const el = document.getElementById('field_' + k); if (el) el.value = p[k] || '';
   });
+  document.getElementById('formTitle').textContent = 'Editar producto';
+  document.getElementById('submitBtn').textContent = 'Actualizar producto';
+  
+  const visibleId = document.getElementById('field_id_visible');
+  if (visibleId) visibleId.value = p.id;
 };
 
 window.clearAdminForm = function() {
-  const titles = { 'formTitle': 'Nuevo producto', 'submitBtn': 'Guardar producto' };
-  for (const id in titles) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = titles[id];
-  }
-  const form = document.getElementById('adminForm');
-  if (form) form.reset();
+  document.getElementById('adminForm')?.reset();
+  const newId = 'p' + Date.now();
   const hiddenId = document.getElementById('field_id');
-  if (hiddenId) hiddenId.value = '';
+  const visibleId = document.getElementById('field_id_visible');
+  if (hiddenId) hiddenId.value = newId;
+  if (visibleId) visibleId.value = newId;
+  
+  const estadoEl = document.getElementById('field_estado');
+  if (estadoEl) estadoEl.value = '';
+  
+  document.getElementById('formTitle').textContent = 'Nuevo producto';
+  document.getElementById('submitBtn').textContent = 'Guardar producto';
   const msg = document.getElementById('adminMsg');
   if (msg) msg.textContent = '';
 };
 
 async function submitAdminForm(e) {
   e.preventDefault();
-  const msg = document.getElementById('adminMsg');
   const btn = document.getElementById('submitBtn');
+  const msg = document.getElementById('adminMsg');
 
-  if (msg) { msg.textContent = 'Procesando…'; msg.className = 'text-charcoal/60 text-sm animate-pulse'; }
   if (btn) btn.disabled = true;
+  if (msg) { msg.textContent = 'Sincronizando con Google Sheets…'; msg.className = 'text-charcoal/60 text-sm animate-pulse'; }
+  if (typeof window.bumpVersion === 'function') window.bumpVersion();
 
-  const required = ['id', 'nombre', 'precio'];
-  const keys = ['id', 'nombre', 'precio', 'descripcion', 'imagenes', 'estado'];
   const payload = { action: 'save' };
-
-  let valid = true;
-  keys.forEach(k => {
+  ['id', 'nombre', 'precio', 'descripcion', 'imagenes', 'estado'].forEach(k => {
     const el = document.getElementById('field_' + k);
     const val = el ? el.value.trim() : '';
-    if (required.includes(k) && !val) valid = false;
-    payload[k] = val;
+    payload[k] = k === 'imagenes' ? val.replace(/\\/g, '/') : val;
   });
 
-  if (!valid) {
-    if (msg) { msg.textContent = 'Por favor complete todos los campos obligatorios (*).'; msg.className = 'text-red-600 text-sm'; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Guardar producto'; }
-    return;
-  }
-
   try {
-    await fetch(window.GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (msg) { msg.textContent = '✓ ¡Datos sincronizados con Google Sheets con éxito!'; msg.className = 'text-green-600 text-sm'; }
-    clearAdminForm();
-    if (typeof window.loadAdminProducts === 'function') {
-      setTimeout(window.loadAdminProducts, 2000);
-    }
+    await sendToGoogleScript(payload);
+    if (msg) { msg.textContent = '✓ Guardado exitosamente.'; msg.className = 'text-green-600 text-sm font-medium'; }
+    window.clearAdminForm();
+    setTimeout(loadAdminProducts, 2000);
   } catch (err) {
-    if (msg) { msg.textContent = 'Error al guardar: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+    if (msg) { msg.textContent = 'Error: ' + err.message; msg.className = 'text-red-600 text-sm'; }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Guardar producto'; }
   }
 }
 
-window.deleteProduct = async function(id) {
-  if (!confirm('¿Estás seguro de que deseas eliminar este producto permanentemente?')) return;
-  const msg = document.getElementById('adminMsg');
-  if (msg) { msg.textContent = 'Eliminando de Google Sheets…'; msg.className = 'text-amber-600 text-sm'; }
-
-  try {
-    await fetch(window.GOOGLE_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id: id }),
-    });
-    if (msg) { msg.textContent = '✓ Producto eliminado de la planilla.'; msg.className = 'text-green-600 text-sm'; }
-    if (typeof window.loadAdminProducts === 'function') {
-      setTimeout(window.loadAdminProducts, 1500);
-    }
-  } catch (err) {
-    if (msg) { msg.textContent = 'Error al eliminar: ' + err.message; msg.className = 'text-red-600 text-sm'; }
-  }
-};
-
 function initAdminEvents() {
   document.getElementById('adminForm')    ?.addEventListener('submit', submitAdminForm);
-  document.getElementById('clearFormBtn') ?.addEventListener('click', clearAdminForm);
-  document.getElementById('refreshBtn')   ?.addEventListener('click', () => {
-    if (typeof window.loadAdminProducts === 'function') window.loadAdminProducts();
-  });
+  document.getElementById('clearFormBtn') ?.addEventListener('click', window.clearAdminForm);
+  document.getElementById('refreshBtn')   ?.addEventListener('click', loadAdminProducts);
 }
 
-// ─── Inicialización de la Aplicación ──────────────────
+// ─── Inicialización (Bootstrap) ─────────────────────────
 
 async function initCatalog() {
   const loader = document.getElementById('loader');
@@ -501,12 +430,12 @@ async function initCatalog() {
   updateCartUI();
 
   try {
-    const res = await fetch(window.SHEET_CSV_URL);
+    const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now());
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const rows = window.parseCSV(await res.text());
+    const rows = parseCSV(await res.text());
     loader?.classList.add('hidden');
 
-    // Filtra y deja afuera los productos que digan "oculto" en la columna estado
+    // Catálogo público: Solo renderiza lo que NO esté marcado como 'oculto'
     const productosActivos = rows.filter(p => p.estado?.toLowerCase().trim() !== 'oculto');
 
     initProductGridEvents(productosActivos);
@@ -520,12 +449,14 @@ async function initCatalog() {
 
 async function initAdmin() {
   initAdminEvents();
-  if (typeof window.loadAdminProducts === 'function') {
-    await window.loadAdminProducts();
-  }
+  if (typeof window.clearAdminForm === 'function') window.clearAdminForm();
+  await loadAdminProducts();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (IS_ADMIN) initAdmin();
-  else initCatalog();
+  if (IS_ADMIN) {
+    initAdmin();
+  } else {
+    initCatalog();
+  }
 });
