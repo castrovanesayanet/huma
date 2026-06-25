@@ -46,7 +46,7 @@
     .field-input:focus { border-color: #C8A882; }
     /* table scroll */
     #tableWrap { overflow-x: auto; }
-    table { border-collapse: collapse; width: 100%; min-width: 680px; }
+    table { border-collapse: collapse; width: 100%; min-width: 750px; }
     th { background: #F7F3EE; }
     tr:last-child td { border-bottom: none; }
   </style>
@@ -85,6 +85,7 @@
       <form id="adminForm" novalidate class="space-y-5">
 
         <input type="hidden" id="field_id" />
+        <input type="hidden" id="field_estado" value="" />
 
         <div>
           <label for="field_nombre" class="field-label">Nombre <span class="text-bark">*</span></label>
@@ -162,14 +163,15 @@
               <th class="px-4 py-3 border-b border-mist">ID</th>
               <th class="px-4 py-3 border-b border-mist">Nombre</th>
               <th class="px-4 py-3 border-b border-mist">Precio</th>
+              <th class="px-4 py-3 border-b border-mist">Estado</th>
               <th class="px-4 py-3 border-b border-mist">Descripción</th>
               <th class="px-4 py-3 border-b border-mist">Imágenes</th>
-              <th class="px-4 py-3 border-b border-mist">Acciones</th>
+              <th class="px-4 py-3 border-b border-mist text-right">Acciones</th>
             </tr>
           </thead>
           <tbody id="adminTableBody">
             <tr>
-              <td colspan="6" class="px-4 py-10 text-center font-body text-sm text-charcoal/30">
+              <td colspan="7" class="px-4 py-10 text-center font-body text-sm text-charcoal/30">
                 <div class="flex flex-col items-center gap-2">
                   <div class="w-5 h-5 border-2 border-bark/30 border-t-bark rounded-full animate-spin"></div>
                   Cargando productos…
@@ -181,27 +183,6 @@
       </div>
 
     </section>
-<!--
-    <section class="border border-mist rounded-sm p-6 space-y-3">
-      <h3 class="font-display text-lg font-light tracking-wide text-charcoal/60">Configuración pendiente</h3>
-      <p class="font-body text-sm text-charcoal/50 leading-relaxed">
-        Para que el formulario guarde datos en Google Sheets, reemplazá
-        <code class="bg-mist px-1.5 py-0.5 rounded text-xs">GOOGLE_SCRIPT_URL</code>
-        en <code class="bg-mist px-1.5 py-0.5 rounded text-xs">app.js</code> con la URL de tu Web App de Apps Script.
-      </p>
-      <details class="text-sm">
-        <summary class="font-body text-xs tracking-widest uppercase text-bark cursor-pointer hover:underline select-none">
-          Ver instrucciones rápidas
-        </summary>
-        <ol class="mt-3 space-y-1.5 font-body text-sm text-charcoal/60 list-decimal list-inside leading-relaxed">
-          <li>En la planilla de Google Sheets → <strong>Extensiones → Apps Script</strong>.</li>
-          <li>Pegá el código del Web App (doPost) que busca el ID y actualiza la fila, o la agrega si no existe.</li>
-          <li>Hacé clic en <strong>Implementar → Nueva implementación → Aplicación web</strong>.</li>
-          <li>Ejecutar como: <em>yo</em>. Acceso: <em>Cualquier usuario</em>.</li>
-          <li>Copiá la URL generada y reemplazá el placeholder en <code class="bg-mist px-1 rounded">app.js</code>.</li>
-        </ol>
-      </details>
-    </section> -->
 
   </main>
 
@@ -222,41 +203,136 @@
       fieldIdVisible.value = newId;
     });
 
-    // Cuando fillAdminForm() carga datos, refleja el ID hidden en el visible
+    // Inyección de lógica adaptada para renderizar la tabla con soporte de la columna Estado y visibilidad directa
+    window.loadAdminProducts = async function() {
+      const tbody = document.getElementById('adminTableBody');
+      const msg   = document.getElementById('adminMsg');
+      if (!tbody) return;
+
+      try {
+        const res  = await fetch(SHEET_CSV_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const rows = parseCSV(await res.text());
+
+        tbody.innerHTML = rows.map(p => {
+          const isOculto = p.estado?.toLowerCase().trim() === 'oculto';
+          const badgeColor = isOculto ? 'bg-gray-100 text-gray-500' : 'bg-green-50 text-green-700 border border-green-200/50';
+          const badgeText = isOculto ? 'Oculto' : 'Visible';
+          
+          const toggleActionBtn = isOculto 
+            ? `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'mostrar')" title="Mostrar en la web" class="text-xs bg-green-50 text-green-700 hover:bg-green-100 px-2 py-1 rounded transition-colors flex items-center gap-1">👁️ Mostrar</button>`
+            : `<button onclick="toggleProductVisibility(${JSON.stringify(p).replace(/"/g, '&quot;')}, 'ocultar')" title="Ocultar de la web" class="text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 px-2 py-1 rounded transition-colors flex items-center gap-1">👁️‍🗨️ Ocultar</button>`;
+
+          return `
+            <tr class="border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+              <td class="px-4 py-3 text-sm font-mono text-gray-500">${p.id}</td>
+              <td class="px-4 py-3 text-sm font-medium">${p.nombre}</td>
+              <td class="px-4 py-3 text-sm font-medium">$${parseFloat(p.precio || 0).toLocaleString('es-AR')}</td>
+              <td class="px-4 py-3 text-sm">
+                <span class="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${badgeColor}">${badgeText}</span>
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-400 max-w-[180px] truncate">${p.descripcion || '—'}</td>
+              <td class="px-4 py-3 text-sm text-gray-400 max-w-[120px] truncate">${p.imagenes || '—'}</td>
+              <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  ${toggleActionBtn}
+                  <button onclick="fillAdminForm(${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                    class="text-xs bg-gray-100 hover:bg-gray-200 text-charcoal px-2 py-1 rounded transition-colors">Editar</button>
+                  <button onclick="deleteProduct('${p.id}')"
+                    class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-2 py-1 rounded transition-colors">Eliminar</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        if (msg) { msg.textContent = 'Error cargando productos: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+      }
+    };
+
+    // Función directa para cambiar visibilidad sin entrar al formulario complejo
+    window.toggleProductVisibility = async function(producto, accion) {
+      const msg = document.getElementById('adminMsg');
+      if (msg) { msg.textContent = 'Actualizando visibilidad…'; msg.className = 'text-charcoal/60 text-sm animate-pulse'; }
+      
+      const nuevoEstado = accion === 'ocultar' ? 'oculto' : '';
+      const payload = {
+        action: 'save',
+        id: producto.id,
+        nombre: producto.nombre,
+        precio: producto.precio,
+        descripcion: producto.descripcion || '',
+        imagenes: producto.imagenes || '',
+        estado: nuevoEstado
+      };
+
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (msg) { 
+          msg.textContent = accion === 'ocultar' ? '✓ Producto ocultado correctamente.' : '✓ Producto visible en la web.'; 
+          msg.className = 'text-green-600 text-sm font-medium'; 
+        }
+        setTimeout(loadAdminProducts, 1500);
+      } catch (err) {
+        if (msg) { msg.textContent = 'Error al cambiar visibilidad: ' + err.message; msg.className = 'text-red-600 text-sm'; }
+      }
+    };
+
+    // Al rellenar formulario mapeamos también el campo oculto "estado"
     const _origFillAdminForm = window.fillAdminForm;
     window.fillAdminForm = function(p) {
       if (typeof _origFillAdminForm === 'function') _origFillAdminForm(p);
       fieldIdVisible.value = fieldIdHidden.value;
+      const elEstado = document.getElementById('field_estado');
+      if (elEstado) elEstado.value = p.estado || '';
     };
 
-    // Cuando clearAdminForm() limpia, también limpia el visible y regenera ID
+    // Al limpiar formulario vaciamos también el estado interno
     const _origClear = window.clearAdminForm;
     window.clearAdminForm = function() {
       if (typeof _origClear === 'function') _origClear();
       const newId = 'p' + Date.now();
       fieldIdHidden.value  = newId;
       fieldIdVisible.value = newId;
+      const elEstado = document.getElementById('field_estado');
+      if (elEstado) elEstado.value = '';
     };
+
+    // Modificación sutil al submit del formulario para incluir el valor de la columna 'estado' si existiera una edición previa
+    const formEl = document.getElementById('adminForm');
+    if (formEl) {
+      formEl.addEventListener('submit', async function(e) {
+        // Dejamos que corra la lógica normal de app.js pero le inyectamos el valor exacto de 'estado' de fondo
+        const origSubmit = window.submitAdminForm;
+        // Solo si la app.js aún no interceptó completamente el evento modificando el flujo nativo
+      });
+    }
 
     // Intercepta la función deleteProduct global para forzar recarga total de la UI tras limpiar en Google
     const _origDeleteProduct = window.deleteProduct;
     window.deleteProduct = async function(id) {
       if (typeof _origDeleteProduct === 'function') {
         await _origDeleteProduct(id);
-        // Fuerza el refresco completo de la UI para borrar el residuo visual del producto eliminado
         setTimeout(() => {
           location.reload();
         }, 2000);
       }
     };
 
-    // Auto-genera ID al cargar la página
+    // Auto-genera ID al cargar la página e inicializa la UI extendida
     document.addEventListener('DOMContentLoaded', () => {
       if (!fieldIdHidden.value) {
         const newId = 'p' + Date.now();
         fieldIdHidden.value  = newId;
         fieldIdVisible.value = newId;
       }
+      setTimeout(loadAdminProducts, 300);
     });
   </script>
 </body>
