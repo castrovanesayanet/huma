@@ -68,17 +68,21 @@ function splitCSVLine(line) {
 ───────────────────────────────────────────────────── */
 
 async function sendToGoogleScript(payload) {
-  // Limpia valores undefined/null para no mandar parámetros vacíos erróneos
+  // Limpia valores undefined/null
   const clean = {};
   Object.entries(payload).forEach(([k, v]) => {
     clean[k] = v == null ? '' : String(v);
   });
 
-  const qs  = new URLSearchParams(clean).toString();
-  const url = `${GOOGLE_SCRIPT_URL}?${qs}`;
-
-  // no-cors: no podemos leer la respuesta, pero el script SÍ se ejecuta
-  await fetch(url, { method: 'GET', mode: 'no-cors' });
+  // POST con Content-Type text/plain → evita preflight CORS.
+  // Apps Script lo recibe en doPost(e) via e.postData.contents.
+  // Con mode:'no-cors' no podemos leer la respuesta, pero el script SÍ ejecuta.
+  await fetch(GOOGLE_SCRIPT_URL, {
+    method:  'POST',
+    mode:    'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body:    JSON.stringify(clean),
+  });
   return true;
 }
 
